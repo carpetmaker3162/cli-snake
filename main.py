@@ -8,7 +8,7 @@ import threading
 fd = sys.stdin.fileno()
 old_settings = termios.tcgetattr(fd)
 event_queue = []
-IS_WIN = os.name == "nt" # fuck windows fr
+IS_WIN = os.name == "nt"
 
 SCREENW, SCREENH = os.get_terminal_size()
 REFRESH_RATE = 0.2
