@@ -4,6 +4,8 @@ import time
 import sys
 from getch import getch
 import threading
+from math import floor, ceil
+import random
 
 fd = sys.stdin.fileno()
 old_settings = termios.tcgetattr(fd)
@@ -11,7 +13,7 @@ event_queue = []
 IS_WIN = os.name == "nt"
 
 SCREENW, SCREENH = os.get_terminal_size()
-REFRESH_RATE = 0.2
+REFRESH_RATE = 0.0333
 SCENE_HEIGHT = 20
 PIPE_OPENING_SIZE = 6
 MODE = 0
@@ -25,30 +27,128 @@ def reset_terminal():
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
 def index(char):
-    if char is None or char == " " or len(char) == 0:
+    if not char.strip():
         return 32
     else:
         return ord(char)
 
+class Player:
+    def __init__(self) -> None:
+        self.direction = "R"
+        self.x = floor(SCREENW / 6)
+        self.y = floor(SCREENH / 2)
+        self.speed = 0.2
+        self.length = 4
+    
+    def update(self):
+        match self.direction:
+            case "R":
+                self.x += self.speed # note to self: be conservative with movement
+            case "L":
+                self.x -= self.speed
+            case "U":
+                self.y -= self.speed
+            case "D":
+                self.y += self.speed
+
+class Scene:
+    def __init__(self) -> None:
+        """
+        -2 is wall
+        -1 is apple
+        0 is space
+        >1 is snake body depending on length of the snake
+        """
+        self.matrix = [[0 for i in range(SCREENW)] for i in range(SCREENH)]
+        self.player = Player()
+        self.textures = {
+            0: " ",
+            -1: "O",
+            -2: "/",
+        }
+        self.player_texture = "█"
+        self.apple_count = 0
+        self.effpx = self.player.x
+        self.effpy = self.player.y
+        self.matrix[self.effpy][self.effpx] = 1
+    
+    def new_apple(self):
+        self.apple_count += 1
+        nx = floor(random.random() * SCREENW)
+        ny = floor(random.random() * SCREENH)
+
+    def load_matrix(self):
+        self.player.update()
+        prev_position = (self.effpx, self.effpy)
+        
+        match self.player.direction: # be conservative with player position (change later because when you turn it looks weird)
+            case "R":
+                self.effpx = floor(self.player.x)
+                self.effpy = round(self.player.y)
+            case "L":
+                self.effpx = ceil(self.player.x)
+                self.effpy = round(self.player.y)
+            case "U":
+                self.effpx = round(self.player.x)
+                self.effpy = ceil(self.player.y)
+            case "D":
+                self.effpx = round(self.player.x)
+                self.effpy = floor(self.player.y)
+        
+        if self.player.x < 1 or self.player.x > SCREENW-1:
+            raise SystemExit
+        elif self.player.y < 1 or self.player.y > SCREENH-1:
+            raise SystemExit
+        
+        new_position = (self.effpx, self.effpy)
+
+        for r, row in enumerate(self.matrix):
+            for c, cell in enumerate(row):
+                if cell > 0 and prev_position != new_position:
+                    self.matrix[r][c] += 1
+                
+                self.matrix[self.effpy][self.effpx] = 1
+                
+                if self.matrix[r][c] > self.player.length:
+                    self.matrix[r][c] = 0
+    
+    def print_matrix(self):
+        buf = str()
+        for row in self.matrix:
+            for cell in row:
+                px = self.textures.get(cell, self.player_texture)
+                buf += px
+            buf += "\n"
+        print(buf, end="\r")
+
 if __name__ == "__main__":
     try:
-        thread = threading.Thread(target=process_keyboard_events, args=(event_queue))
+        thread = threading.Thread(target=process_keyboard_events, args=(event_queue,))
         thread.daemon = True
         thread.start()
-
+        scene = Scene()
+        last_refresh = time.time()
+        
         while True:
-            # refresh objects
-            has_refreshed_player = False
-
             if event_queue:
                 key = event_queue.pop(0)
-                
-                index(key)
-
-                sys.stdout.flush()
             
+                if index(key) in (3, 4, 27):
+                    raise SystemExit
+                elif index(key) in (87, 119):
+                    scene.player.direction = "U"
+                elif index(key) in (68, 100):
+                    scene.player.direction = "R"
+                elif index(key) in (83, 115):
+                    scene.player.direction = "D"
+                elif index(key) in (65, 97):
+                    scene.player.direction = "L"
+        
             if time.time() - last_refresh > REFRESH_RATE:
                 last_refresh = time.time()
+                scene.load_matrix()
+                scene.print_matrix()
+                sys.stdout.flush()
     except Exception as e:
         raise e
     finally:
