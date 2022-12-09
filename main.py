@@ -13,7 +13,8 @@ event_queue = []
 IS_WIN = os.name == "nt"
 
 SCREENW, SCREENH = os.get_terminal_size()
-REFRESH_RATE = 0.0333
+SCREENW //= 2
+REFRESH_RATE = 0.0667
 SCENE_HEIGHT = 20
 PIPE_OPENING_SIZE = 6
 MODE = 0
@@ -37,7 +38,7 @@ class Player:
         self.direction = "R"
         self.x = floor(SCREENW / 6)
         self.y = floor(SCREENH / 2)
-        self.speed = 1
+        self.speed = 0.8
         self.length = 4
     
     def update(self):
@@ -62,11 +63,11 @@ class Scene:
         self.matrix = [[0 for i in range(SCREENW)] for i in range(SCENE_HEIGHT)]
         self.player = Player()
         self.textures = {
-            0: " ",
-            -1: "O",
-            -2: "/",
+            0: "  ",
+            -1: "▒▒",
+            -2: "//",
         }
-        self.player_texture = "█"
+        self.player_texture = "██"
         self.apple_count = 0
         self.effpx = self.player.x
         self.effpy = self.player.y
@@ -76,8 +77,8 @@ class Scene:
     
     def new_apple(self):
         self.apple_count += 1
-        nx = floor(random.random() * SCREENW)
-        ny = floor(random.random() * SCENE_HEIGHT)
+        nx = floor(random.random() * (SCREENW-2)) + 1
+        ny = floor(random.random() * (SCENE_HEIGHT-2)) + 1
         if self.matrix[ny][nx] > 0:
             return self.new_apple()
         return nx, ny
@@ -86,19 +87,21 @@ class Scene:
         self.player.update()
         prev_position = (self.effpx, self.effpy)
         
-        match self.player.direction: # be conservative with player position (change later because when you turn it looks weird)
-            case "R":
-                self.effpx = floor(self.player.x)
-                self.effpy = round(self.player.y)
-            case "L":
-                self.effpx = ceil(self.player.x)
-                self.effpy = round(self.player.y)
-            case "U":
-                self.effpx = round(self.player.x)
-                self.effpy = ceil(self.player.y)
-            case "D":
-                self.effpx = round(self.player.x)
-                self.effpy = floor(self.player.y)
+        # match self.player.direction: # be conservative with player position (change later because when you turn it looks weird)
+        #     case "R":
+        #         self.effpx = floor(self.player.x)
+        #         self.effpy = round(self.player.y)
+        #     case "L":
+        #         self.effpx = ceil(self.player.x)
+        #         self.effpy = round(self.player.y)
+        #     case "U":
+        #         self.effpx = round(self.player.x)
+        #         self.effpy = ceil(self.player.y)
+        #     case "D":
+        #         self.effpx = round(self.player.x)
+        #         self.effpy = floor(self.player.y)
+        self.effpx = round(self.player.x)
+        self.effpy = round(self.player.y)
         
         if self.player.x < 1 or self.player.x > SCREENW-1:
             raise SystemExit
