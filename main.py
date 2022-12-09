@@ -37,7 +37,7 @@ class Player:
         self.direction = "R"
         self.x = floor(SCREENW / 6)
         self.y = floor(SCREENH / 2)
-        self.speed = 0.2
+        self.speed = 1
         self.length = 4
     
     def update(self):
@@ -59,7 +59,7 @@ class Scene:
         0 is space
         >1 is snake body depending on length of the snake
         """
-        self.matrix = [[0 for i in range(SCREENW)] for i in range(SCREENH)]
+        self.matrix = [[0 for i in range(SCREENW)] for i in range(SCENE_HEIGHT)]
         self.player = Player()
         self.textures = {
             0: " ",
@@ -71,11 +71,16 @@ class Scene:
         self.effpx = self.player.x
         self.effpy = self.player.y
         self.matrix[self.effpy][self.effpx] = 1
+        ax, ay = self.new_apple()
+        self.matrix[ay][ax] = -1
     
     def new_apple(self):
         self.apple_count += 1
         nx = floor(random.random() * SCREENW)
-        ny = floor(random.random() * SCREENH)
+        ny = floor(random.random() * SCENE_HEIGHT)
+        if self.matrix[ny][nx] > 0:
+            return self.new_apple()
+        return nx, ny
 
     def load_matrix(self):
         self.player.update()
@@ -107,22 +112,31 @@ class Scene:
                 if cell > 0 and prev_position != new_position:
                     self.matrix[r][c] += 1
                 
+                if self.matrix[self.effpy][self.effpx] > 3:
+                    raise SystemExit
+                elif self.matrix[self.effpy][self.effpx] == -1:
+                    self.player.length += 3
+                    ax, ay = self.new_apple()
+                    self.matrix[ay][ax] = -1
+                
                 self.matrix[self.effpy][self.effpx] = 1
                 
                 if self.matrix[r][c] > self.player.length:
                     self.matrix[r][c] = 0
     
     def print_matrix(self):
+        print("\033[H")
+        print("\r", end="")
         buf = str()
         for row in self.matrix:
             for cell in row:
-                px = self.textures.get(cell, self.player_texture)
-                buf += px
-            buf += "\n"
-        print(buf, end="\r")
+                buf += self.textures.get(cell, self.player_texture)
+            buf += "\n\r"
+        print(buf, end="")
 
 if __name__ == "__main__":
     try:
+        os.system("cls" if IS_WIN else "clear")
         thread = threading.Thread(target=process_keyboard_events, args=(event_queue,))
         thread.daemon = True
         thread.start()
@@ -143,12 +157,12 @@ if __name__ == "__main__":
                     scene.player.direction = "D"
                 elif index(key) in (65, 97):
                     scene.player.direction = "L"
+                sys.stdout.flush()
         
             if time.time() - last_refresh > REFRESH_RATE:
                 last_refresh = time.time()
                 scene.load_matrix()
                 scene.print_matrix()
-                sys.stdout.flush()
     except Exception as e:
         raise e
     finally:
