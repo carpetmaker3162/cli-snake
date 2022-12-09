@@ -64,10 +64,10 @@ class Scene:
         self.player = Player()
         self.textures = {
             0: "  ",
-            -1: "▒▒",
+            -1: "\033[101m  \033[0m",
             -2: "//",
         }
-        self.player_texture = "██"
+        self.player_texture = "\033[40m  \033[0m"
         self.apple_count = 0
         self.effpx = self.player.x
         self.effpy = self.player.y
