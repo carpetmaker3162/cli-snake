@@ -14,10 +14,10 @@ IS_WIN = os.name == "nt"
 
 SCREENW, SCREENH = os.get_terminal_size()
 SCREENW //= 2
+SCREENW -= 2
+SCREENH -= 3
 REFRESH_RATE = 0.0667
-SCENE_HEIGHT = 20
-PIPE_OPENING_SIZE = 6
-MODE = 0
+SCENE_HEIGHT = SCREENH - 2
 
 def process_keyboard_events(q):
     while True:
@@ -74,6 +74,7 @@ class Scene:
         self.matrix[self.effpy][self.effpx] = 1
         ax, ay = self.new_apple()
         self.matrix[ay][ax] = -1
+        self.frame = 0
     
     def new_apple(self):
         self.apple_count += 1
@@ -84,6 +85,7 @@ class Scene:
         return nx, ny
 
     def load_matrix(self):
+        self.frame += 1
         self.player.update()
         prev_position = (self.effpx, self.effpy)
         
@@ -103,9 +105,9 @@ class Scene:
         self.effpx = round(self.player.x)
         self.effpy = round(self.player.y)
         
-        if self.player.x < 1 or self.player.x > SCREENW-1:
+        if self.effpx < 0 or self.effpx > SCREENW:
             raise SystemExit
-        elif self.player.y < 1 or self.player.y > SCREENH-1:
+        elif self.effpy < 0 or self.effpy > SCENE_HEIGHT:
             raise SystemExit
         
         new_position = (self.effpx, self.effpy)
@@ -115,7 +117,7 @@ class Scene:
                 if cell > 0 and prev_position != new_position:
                     self.matrix[r][c] += 1
                 
-                if self.matrix[self.effpy][self.effpx] > 3:
+                if self.matrix[self.effpy][self.effpx] > 2:
                     raise SystemExit
                 elif self.matrix[self.effpy][self.effpx] == -1:
                     self.player.length += 3
@@ -131,11 +133,32 @@ class Scene:
         print("\033[H")
         print("\r", end="")
         buf = str()
+        buf += ("\r" + "//" * (SCREENW+2) + "\n")
         for row in self.matrix:
+            buf += "\r//"
             for cell in row:
                 buf += self.textures.get(cell, self.player_texture)
-            buf += "\n\r"
+            buf += "//\n\r"
+        buf += ("\r" + "//" * (SCREENW+2) + "\n")
         print(buf, end="")
+
+OPPOSITES = {
+    "U": "D",
+    "D": "U",
+    "L": "R",
+    "R": "L",
+}
+
+DIRECTIONS = {
+    87: "U",
+    119: "U",
+    68: "R",
+    100: "R",
+    83: "D",
+    115: "D",
+    65: "L",
+    97: "L",
+}
 
 if __name__ == "__main__":
     try:
@@ -152,14 +175,12 @@ if __name__ == "__main__":
             
                 if index(key) in (3, 4, 27):
                     raise SystemExit
-                elif index(key) in (87, 119):
-                    scene.player.direction = "U"
-                elif index(key) in (68, 100):
-                    scene.player.direction = "R"
-                elif index(key) in (83, 115):
-                    scene.player.direction = "D"
-                elif index(key) in (65, 97):
-                    scene.player.direction = "L"
+                else:
+                    new_direction = DIRECTIONS[index(key)]
+                    
+                    if scene.player.direction != OPPOSITES[new_direction]:
+                        scene.player.direction = DIRECTIONS[index(key)]
+                
                 sys.stdout.flush()
         
             if time.time() - last_refresh > REFRESH_RATE:
@@ -169,4 +190,5 @@ if __name__ == "__main__":
     except Exception as e:
         raise e
     finally:
+        print("\r\n")
         reset_terminal()
