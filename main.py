@@ -80,8 +80,9 @@ class Scene:
         self.apple_count += 1
         nx = floor(random.random() * (SCREENW-2)) + 1
         ny = floor(random.random() * (SCENE_HEIGHT-2)) + 1
-        if self.matrix[ny][nx] > 0:
-            return self.new_apple()
+        while self.matrix[ny][nx] != 0:
+            nx = floor(random.random() * (SCREENW-2)) + 1
+            ny = floor(random.random() * (SCENE_HEIGHT-2)) + 1
         return nx, ny
 
     def load_matrix(self):
@@ -160,6 +161,13 @@ DIRECTIONS = {
     97: "L",
 }
 
+DIRECTION_VECT = {
+    "L": (-1, 0),
+    "R": (1, 0),
+    "D": (0, 1),
+    "U": (0, -1),
+}
+
 if __name__ == "__main__":
     try:
         os.system("cls" if IS_WIN else "clear")
@@ -176,10 +184,17 @@ if __name__ == "__main__":
                 if index(key) in (3, 4, 27):
                     raise SystemExit
                 else:
-                    new_direction = DIRECTIONS[index(key)]
+                    try:
+                        new_direction = DIRECTIONS[index(key)]
+                    except IndexError:
+                        pass
+                    
+                    # dx, dy = DIRECTION_VECT[new_direction]
                     
                     if scene.player.direction != OPPOSITES[new_direction]:
                         scene.player.direction = DIRECTIONS[index(key)]
+                        # scene.player.x += dx
+                        # scene.player.y += dy
                 
                 sys.stdout.flush()
         
